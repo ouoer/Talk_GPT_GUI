@@ -1,67 +1,72 @@
-import tkinter as tk
-from tkinter.font import Font
+import sys
 import openai
 from datetime import datetime
 import json
 import os
-# -*- coding: utf-8 -*-
+from PyQt5.QtWidgets import QApplication, QMainWindow, QTextEdit, QPushButton, QVBoxLayout, QWidget
+from PyQt5.QtGui import QFont
 
 # Set your OpenAI API key here
 openai.api_key = ''
 
-class ChatGUI:
-    def __init__(self, root):
-        self.root = root
-        self.root.title("ChatGPT")
+class ChatGUI(QMainWindow):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("ChatGPT")
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
         self.create_widgets()
         self.conversation_list = []
         self.talk = Chat(conversation_list=self.conversation_list)
 
     def create_widgets(self):
-        # Frame to hold conversation and input widgets
-        self.frame = tk.Frame(self.root)
-        self.frame.pack(padx=10, pady=10)
-
         # Conversation Text Widget
-        self.conversation_text = tk.Text(self.frame, wrap="word", font=Font(family="SimSun", size=12))
-        self.conversation_text.pack(padx=10, pady=10)
-        self.conversation_text.config(borderwidth=1, relief="solid")
+        self.conversation_text = QTextEdit(self)
+        self.conversation_text.setReadOnly(True)
+        self.conversation_text.setFontFamily("SimSun")
+        self.conversation_text.setFontPointSize(12)
 
         # Input Text Widget
-        self.input_text = tk.Text(self.frame, wrap="word", font=Font(family="SimSun", size=12), height=3)
-        self.input_text.pack(padx=10, pady=5, fill=tk.X)
-        self.input_text.config(borderwidth=1, relief="solid")
+        self.input_text = QTextEdit(self)
+        self.input_text.setFontFamily("SimSun")
+        self.input_text.setFontPointSize(12)
 
         # Submit Button
-        self.submit_button = tk.Button(self.frame, text="提交", font=Font(family="Arial", size=12),
-                                       command=self.on_submit)
-        self.submit_button.pack(side=tk.LEFT, padx=10, pady=5)
+        self.submit_button = QPushButton("提交", self)
+        font = QFont()
+        font.setPointSize(12)
+        self.submit_button.setFont(font)
+        self.submit_button.clicked.connect(self.on_submit)
 
         # Clear Button
-        self.clear_button = tk.Button(self.frame, text="Clear", font=Font(family="Arial", size=12),
-                                      command=self.clear_text)
-        self.clear_button.pack(side=tk.LEFT, padx=10, pady=5)
+        self.clear_button = QPushButton("Clear", self)
+        font = QFont()
+        font.setPointSize(12)
+        self.clear_button.setFont(font)
+        self.clear_button.clicked.connect(self.clear_text)
 
         # Select All Button
-        self.select_all_button = tk.Button(self.frame, text="Select All", font=Font(family="Arial", size=12),
-                                           command=self.select_all_text)
-        self.select_all_button.pack(side=tk.LEFT, padx=10, pady=5)
+        self.select_all_button = QPushButton("Select All", self)
+        font = QFont()
+        font.setPointSize(12)
+        self.select_all_button.setFont(font)
+        self.select_all_button.clicked.connect(self.select_all_text)
 
-        # Bind events to the conversation text widget
-        self.conversation_text.bind("<FocusIn>", self.on_conversation_text_focus_in)
-        self.conversation_text.bind("<FocusOut>", self.on_conversation_text_focus_out)
-        # Bind events to the input text widget
-        self.input_text.bind("<FocusIn>", self.on_input_text_focus_in)
-        self.input_text.bind("<FocusOut>", self.on_input_text_focus_out)
+        layout = QVBoxLayout(self.central_widget)
+        layout.addWidget(self.conversation_text)
+        layout.addWidget(self.input_text)
+        layout.addWidget(self.submit_button)
+        layout.addWidget(self.clear_button)
+        layout.addWidget(self.select_all_button)
 
     def on_submit(self):
-        user_input = self.input_text.get("1.0", tk.END).strip()
-        self.input_text.delete("1.0", tk.END)
-        self.conversation_text.insert(tk.END, f"\nMe: {user_input}\n", 'user')
+        user_input = self.input_text.toPlainText().strip()
+        self.input_text.clear()
+        self.conversation_text.append(f"\nMe: {user_input}\n")
 
         # Call the ChatGPT API and get AI response
         ai_response = self.talk.ask(user_input)
-        self.conversation_text.insert(tk.END, f"\nGPT3.5: {ai_response}\n", 'ai')
+        self.conversation_text.append(f"\nGPT3.5: {ai_response}\n")
 
         # Save conversation to JSON file
         current_datetime = datetime.now().strftime("%Y-%m-%d")
@@ -70,37 +75,13 @@ class ChatGUI:
         self.talk.save_conversation_to_json(file_name)
 
     def clear_text(self):
-        self.conversation_text.delete("1.0", tk.END)
+        self.conversation_text.clear()
 
     def select_all_text(self):
-        self.conversation_text.tag_add(tk.SEL, "1.0", tk.END)
-        self.conversation_text.mark_set(tk.INSERT, "1.0")
-        self.conversation_text.see(tk.INSERT)
-
-    def on_conversation_text_focus_in(self, event):
-        self.conversation_text.configure(wrap="none", autoseparators=False)
-        self.conversation_text.bind("<Control-a>", self.select_all_text)
-        self.conversation_text.bind("<Control-A>", self.select_all_text)
-        self.conversation_text.bind("<Control-x>", lambda event: self.conversation_text.event_generate("<<Cut>>"))
-        self.conversation_text.bind("<Control-c>", lambda event: self.conversation_text.event_generate("<<Copy>>"))
-        self.conversation_text.bind("<Control-v>", lambda event: self.conversation_text.event_generate("<<Paste>>"))
-
-    def on_conversation_text_focus_out(self, event):
-        self.conversation_text.configure(wrap="word", autoseparators=True)
-        self.conversation_text.unbind("<Control-a>")
-        self.conversation_text.unbind("<Control-A>")
-        self.conversation_text.unbind("<Control-x>")
-        self.conversation_text.unbind("<Control-c>")
-        self.conversation_text.unbind("<Control-v>")
-
-    def on_input_text_focus_in(self, event):
-        self.input_text.configure(wrap="none", autoseparators=False)
-
-    def on_input_text_focus_out(self, event):
-        self.input_text.configure(wrap="word", autoseparators=True)
+        self.conversation_text.selectAll()
 
 class Chat:
-    def __init__(self, conversation_list=[], conversation_data={}) -> None:
+    def __init__(self, conversation_list=[], conversation_data={}):
         self.conversation_list = conversation_list
         self.costs_list = []
         self.conversation_data = conversation_data
@@ -135,7 +116,7 @@ class Chat:
         self.conversation_data[current_datetime].append(self.conversation_list)
 
 if __name__ == "__main__":
-    root = tk.Tk()
-    root.tk.call('encoding', 'system', 'utf-8')
-    chat_gui = ChatGUI(root)
-    root.mainloop()
+    app = QApplication(sys.argv)
+    chat_gui = ChatGUI()
+    chat_gui.show()
+    sys.exit(app.exec_())
