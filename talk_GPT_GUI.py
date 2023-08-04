@@ -8,7 +8,7 @@ import openai
 import html
 
 # Set your OpenAI API key here
-openai.api_key = ''  
+openai.api_key = ''
 
 class ChatGUI(QMainWindow):
     def __init__(self):
@@ -61,21 +61,13 @@ class ChatGUI(QMainWindow):
         self.input_text.clear()
 
         # Append user input to the conversation with proper formatting
-        self.conversation_text.moveCursor(QTextCursor.End)
-        self.conversation_text.textCursor().insertHtml(f"<font color='green'><b>Me:</b></font><br>{user_input}<br>")
-        self.conversation_text.moveCursor(QTextCursor.End)
+        self.append_to_conversation(f"{user_input}\n", role="Me")
 
         # Call the ChatGPT API and get AI response
         ai_response = self.talk.ask(user_input)
 
-        # Replace newline characters with HTML <br> tags to preserve line breaks
-        ai_response_html = html.escape(ai_response).replace("\n", "<br>")
-
         # Append GPT 3.5's response to the conversation with proper formatting
-        self.conversation_text.moveCursor(QTextCursor.End)
-        self.conversation_text.textCursor().insertHtml(
-            f"<font color='red'><br><b>GPT3.5:</b></font><br>{ai_response_html}<br>")
-        self.conversation_text.moveCursor(QTextCursor.End)
+        self.append_to_conversation(f"{ai_response}\n", role="GPT3.5")
 
         # Save conversation to JSON file
         current_datetime = datetime.now().strftime("%Y-%m-%d")
@@ -90,6 +82,25 @@ class ChatGUI(QMainWindow):
         # Update total cost label
         self.total_cost += cost
         self.total_cost_label.setText(f"总共消费：{self.total_cost:.5f}美元")
+
+    def append_to_conversation(self, text, role):
+        # Move cursor to the end
+        self.conversation_text.moveCursor(QTextCursor.End)
+
+        # Append text with proper formatting
+        role_html = f"<font color='green'><b>{role}:</b></font>" if role == "Me" else f"<font color='red'><b>{role}:</b></font>"
+        content_html = html.escape(text).replace("\n", "<br>")
+
+        if "    " in text:  # Check if the text contains indentation (code block)
+            code_html = f"<pre style='font-family: monospace; color: red;'>{content_html}</pre>"
+            self.conversation_text.textCursor().insertHtml(f"{role_html}<br>{code_html}<br>")
+        elif "Me" in role:
+            self.conversation_text.textCursor().insertHtml(f"{role_html}<br><font color='green'>{content_html}</font><br>")
+        else:
+            self.conversation_text.textCursor().insertHtml(f"{role_html}<br><font color='red'>{content_html}</font><br>")
+
+        # Move cursor to the new end
+        self.conversation_text.moveCursor(QTextCursor.End)
 
     def clear_text(self):
         self.conversation_text.clear()
@@ -122,7 +133,7 @@ class Chat:
             return sum(self.costs_list)
 
     def save_conversation_to_json(self, file_name):
-        save_path = "/ChatGPT_API/logs"      #这里是对话保存路径
+        save_path = "/ChatGPT_API/logs"
         if not os.path.exists(save_path):
             os.makedirs(save_path)
         file_path = os.path.join(save_path, file_name)
