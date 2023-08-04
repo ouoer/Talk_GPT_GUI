@@ -77,7 +77,7 @@ class ChatGUI(QMainWindow):
 
         # Update cost label
         cost = self.talk.total_counts()
-        self.cost_label.setText(f"本次对话共消耗：{cost}美元")
+        self.cost_label.setText(f"本次对话共消耗：{cost:.5f}美元")
 
         # Update total cost label
         self.total_cost += cost
