@@ -96,7 +96,7 @@ class ChatGUI(QMainWindow):
             self.conversation_text.textCursor().insertHtml(f"{role_html}<br>{code_html}<br>")
         elif "Me" in role:
             self.conversation_text.textCursor().insertHtml(f"{role_html}<br><font color='green'>{content_html}</font><br>")
-        else:
+        elif "GPT3.5" in role:
             self.conversation_text.textCursor().insertHtml(f"{role_html}<br><font color='red'>{content_html}</font><br>")
 
         # Move cursor to the new end
