@@ -137,7 +137,7 @@ class Chat:
         if not os.path.exists(save_path):
             os.makedirs(save_path)
         file_path = os.path.join(save_path, file_name)
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, 'a', encoding='utf-8') as f:
             json.dump(self.conversation_data, f, ensure_ascii=False)
 
     def get_conversation_data(self):
