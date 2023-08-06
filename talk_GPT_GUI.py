@@ -14,21 +14,33 @@ class ChatGUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("ChatGPT")
-        self.setGeometry(100, 100, 1000, 800)  # Set initial window size
+        self.setGeometry(100, 100, 1000, 800)  
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.create_widgets()
         self.conversation_list = []
+        self.input_text.textChanged.connect(self.update_character_count)
         self.talk = Chat(conversation_list=self.conversation_list)
+        # Initialize character count label
+        self.update_character_count()
 
         # Initialize total cost
         self.total_cost = 0.0
 
+    def update_character_count(self):
+        text = self.input_text.toPlainText()
+        character_count = len(text)
+        self.character_count_label.setText(f"当前输入框中的字符数：{character_count}")
+
     def create_widgets(self):
+        self.character_count_label = QLabel(self)
+        self.character_count_label.setFont(QFont("Arial", 12))
+        self.character_count_label.setText("当前输入框中的字符数：0")
+
         self.conversation_text = QTextEdit(self)
         self.conversation_text.setReadOnly(True)
         self.conversation_text.setFontFamily("Arial")  # Use Arial font family
-        self.conversation_text.setFontPointSize(18)
+        self.conversation_text.setFontPointSize(24)
 
         # Input Text Widget
         self.input_text = QTextEdit(self)
@@ -49,12 +61,16 @@ class ChatGUI(QMainWindow):
         self.total_cost_label.setFont(QFont("Arial", 12))
         self.total_cost_label.setText("总共消费：0.00000美元")
 
+        # Initialize character count label
+        self.update_character_count()
+
         layout = QVBoxLayout(self.central_widget)
         layout.addWidget(self.conversation_text)
         layout.addWidget(self.input_text)
         layout.addWidget(self.submit_button)
         layout.addWidget(self.cost_label)
         layout.addWidget(self.total_cost_label)
+        layout.addWidget(self.character_count_label)  # Add character count label to the layout
 
     def on_submit(self):
         user_input = self.input_text.toPlainText().strip()
@@ -64,10 +80,15 @@ class ChatGUI(QMainWindow):
         self.append_to_conversation(f"{user_input}\n", role="Me")
 
         # Call the ChatGPT API and get AI response
-        ai_response = self.talk.ask(user_input)
+        if len(user_input) > 4095:
+            ai_response = self.talk.ask_large_model(user_input)
+            role = "GPT3.5-16k"
+        else:
+            ai_response = self.talk.ask(user_input)
+            role = "GPT3.5"
 
-        # Append GPT 3.5's response to the conversation with proper formatting
-        self.append_to_conversation(f"{ai_response}\n", role="GPT3.5")
+        # Append AI's response to the conversation with proper formatting
+        self.append_to_conversation(f"{ai_response}\n", role=role)
 
         # Save conversation to JSON file
         current_datetime = datetime.now().strftime("%Y-%m-%d")
@@ -88,25 +109,21 @@ class ChatGUI(QMainWindow):
         self.conversation_text.moveCursor(QTextCursor.End)
 
         # Append text with proper formatting
-        role_html = f"<font color='green'><b>{role}:</b></font>" if role == "Me" else f"<font color='red'><b>{role}:</b></font>"
+        role_html = f"<font color='red'><b>{role}:</b></font>" if role == "Me" else f"<font color='green'><b>{role}:</b></font>"
         content_html = html.escape(text).replace("\n", "<br>")
 
         if "    " in text:  # Check if the text contains indentation (code block)
             code_html = f"<pre style='font-family: monospace; color: red;'>{content_html}</pre>"
             self.conversation_text.textCursor().insertHtml(f"{role_html}<br>{code_html}<br>")
         elif "Me" in role:
-            self.conversation_text.textCursor().insertHtml(f"{role_html}<br><font color='green'>{content_html}</font><br>")
-        elif "GPT3.5" in role:
             self.conversation_text.textCursor().insertHtml(f"{role_html}<br><font color='red'>{content_html}</font><br>")
+        elif "GPT3.5-16k" in role:  # GPT3.5-16k
+            self.conversation_text.textCursor().insertHtml(f"{role_html}<br><font color='blue'>{content_html}</font><br>")
+        else:
+            self.conversation_text.textCursor().insertHtml(f"{role_html}<br><font color='green'>{content_html}</font><br>")
 
         # Move cursor to the new end
         self.conversation_text.moveCursor(QTextCursor.End)
-
-    def clear_text(self):
-        self.conversation_text.clear()
-
-    def select_all_text(self):
-        self.conversation_text.selectAll()
 
 class Chat:
     def __init__(self, conversation_list=[], conversation_data={}):
@@ -123,6 +140,15 @@ class Chat:
         self.costs_list.append(a)
         return answer
 
+    def ask_large_model(self, prompt):
+        self.conversation_list.append({"role": "user", "content": prompt})
+        response = openai.ChatCompletion.create(model="gpt-3.5-turbo-16k", messages=self.conversation_list)
+        answer = response.choices[0].message['content']
+        self.conversation_list.append({"role": "assistant", "content": answer})
+        a = self.total_counts(response)
+        self.costs_list.append(a)
+        return answer
+
     def total_counts(self, response=None):
         if response:
             tokens_nums = int(response['usage']['total_tokens'])
@@ -133,7 +159,7 @@ class Chat:
             return sum(self.costs_list)
 
     def save_conversation_to_json(self, file_name):
-        save_path = "/ChatGPT_API/logs"
+        save_path = "/ChatGPT_API/logs"  # Update the save path if necessary
         if not os.path.exists(save_path):
             os.makedirs(save_path)
         file_path = os.path.join(save_path, file_name)
