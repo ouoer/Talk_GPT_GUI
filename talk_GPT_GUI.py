@@ -80,12 +80,9 @@ class ChatGUI(QMainWindow):
         self.append_to_conversation(f"{user_input}\n", role="Me")
 
         # Call the ChatGPT API and get AI response
-        if len(user_input) > 4095:
-            ai_response = self.talk.ask_large_model(user_input)
-            role = "GPT3.5-16k"
-        else:
-            ai_response = self.talk.ask(user_input)
-            role = "GPT3.5"
+        
+        ai_response = self.talk.ask(user_input)
+        role = "GPT3.5-16k"
 
         # Append AI's response to the conversation with proper formatting
         self.append_to_conversation(f"{ai_response}\n", role=role)
@@ -119,8 +116,6 @@ class ChatGUI(QMainWindow):
             self.conversation_text.textCursor().insertHtml(f"{role_html}<br><font color='red'>{content_html}</font><br>")
         elif "GPT3.5-16k" in role:  # GPT3.5-16k
             self.conversation_text.textCursor().insertHtml(f"{role_html}<br><font color='blue'>{content_html}</font><br>")
-        else:
-            self.conversation_text.textCursor().insertHtml(f"{role_html}<br><font color='green'>{content_html}</font><br>")
 
         # Move cursor to the new end
         self.conversation_text.moveCursor(QTextCursor.End)
@@ -130,15 +125,6 @@ class Chat:
         self.conversation_list = conversation_list
         self.costs_list = []
         self.conversation_data = conversation_data
-
-    def ask(self, prompt):
-        self.conversation_list.append({"role": "user", "content": prompt})
-        response = openai.ChatCompletion.create(model="gpt-3.5-turbo", messages=self.conversation_list)
-        answer = response.choices[0].message['content']
-        self.conversation_list.append({"role": "assistant", "content": answer})
-        a = self.total_counts(response)
-        self.costs_list.append(a)
-        return answer
 
     def ask_large_model(self, prompt):
         self.conversation_list.append({"role": "user", "content": prompt})
