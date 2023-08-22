@@ -10,11 +10,12 @@ import html
 # Set your OpenAI API key here
 openai.api_key = ''
 
+
 class ChatGUI(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("ChatGPT")
-        self.setGeometry(100, 100, 1000, 800)  
+        self.setGeometry(100, 100, 1000, 800)  # Set initial window size
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
         self.create_widgets()
@@ -80,9 +81,9 @@ class ChatGUI(QMainWindow):
         self.append_to_conversation(f"{user_input}\n", role="Me")
 
         # Call the ChatGPT API and get AI response
-        
-        ai_response = self.talk.ask(user_input)
-        role = "GPT3.5-16k"
+        if len(user_input):
+            ai_response = self.talk.ask_large_model(user_input)
+            role = "GPT3.5-16k"
 
         # Append AI's response to the conversation with proper formatting
         self.append_to_conversation(f"{ai_response}\n", role=role)
@@ -116,6 +117,8 @@ class ChatGUI(QMainWindow):
             self.conversation_text.textCursor().insertHtml(f"{role_html}<br><font color='red'>{content_html}</font><br>")
         elif "GPT3.5-16k" in role:  # GPT3.5-16k
             self.conversation_text.textCursor().insertHtml(f"{role_html}<br><font color='blue'>{content_html}</font><br>")
+        else:
+            self.conversation_text.textCursor().insertHtml(f"{role_html}<br><font color='green'>{content_html}</font><br>")
 
         # Move cursor to the new end
         self.conversation_text.moveCursor(QTextCursor.End)
